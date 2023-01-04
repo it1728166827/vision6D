@@ -12,6 +12,7 @@ import trimesh
 import cv2
 from easydict import EasyDict
 import matplotlib.pyplot as plt
+from skimage.transform import rescale
 
 from . import utils
 
@@ -22,19 +23,18 @@ class App:
     def __init__(
             self, 
             register,
-            scale: int=1,
+            width:int=1920,
+            height:int=1080,
+            scale:float=1,
             # use surgical microscope for medical device with view angle 1 degree
             cam_focal_length:int=5e+4,
             cam_viewup: Tuple=(0,-1,0),
         ):
         
         self.register = register
-        self.scale = scale
-        
-        width = int(self.scale * 1920)
-        height = int(self.scale * 1080)
     
         self.window_size = (width, height)
+        self.scale = scale
         self.reference = None
         self.transformation_matrix = None
         
@@ -73,8 +73,8 @@ class App:
         # self.camera.SetPosition((0,0,0))
         # self.camera.SetFocalPoint((0,0,(self.cam_focal_length/100)/self.scale))
         
-        self.camera.SetPosition((0,0,-(self.cam_focal_length/100)/self.scale))
-        self.camera.SetFocalPoint((0,0,0))
+        self.camera.SetPosition((0,0,0))
+        self.camera.SetFocalPoint((0,0,(self.cam_focal_length/100)))
         self.camera.SetViewUp(viewup)
     
     def set_camera_intrinsics(self, width:int, height:int):
@@ -129,7 +129,7 @@ class App:
         
         self.image_polydata['image'] = pv.read(image_path)
         self.image_polydata['image'] = self.image_polydata['image'].scale(scale_factor, inplace=False)
-        self.image_polydata['image'] = self.image_polydata['image'].translate(-1 * np.array(self.image_polydata['image'].center), inplace=True)
+        self.image_polydata['image'] = self.image_polydata['image'].translate(-1 * np.array(self.image_polydata['image'].center) + np.array([0,0,self.cam_focal_length/100]), inplace=True)
         
         self.image_polydata["image-origin"] = self.image_polydata['image'].copy()
 
@@ -327,6 +327,7 @@ class App:
         self.pv_render.enable_joystick_actor_style()
         background = pv.read(scene_path) #"test/data/black_background.jpg"
         background = background.scale(scale_factor, inplace=False)
+        background = background.translate(-1 * np.array(background.center) + np.array([0,0,self.cam_focal_length/100]), inplace=True)
         
         if render_image:
            self.pv_render.add_mesh(background, rgb=True, opacity=1, name="image")
@@ -345,5 +346,12 @@ class App:
         self.pv_render.camera = self.camera.copy()
         self.pv_render.disable()
         self.pv_render.show()
+
+        # Extract the render image
+        render_image = self.pv_render.last_image
+
+        # Apply resizing if requested
+        if self.scale != 1:
+            render_image = rescale(render_image, self.scale, anti_aliasing=True, channel_axis=2, preserve_range=True).astype(render_image.dtype)
         
-        return self.pv_render.last_image
+        return render_image

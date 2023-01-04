@@ -40,6 +40,12 @@ OSSICLES_MESH_PATH = DATA_DIR / "5997_right_output_mesh_from_df.mesh"
 FACIAL_NERVE_MESH_PATH = DATA_DIR / "5997_right_facial_nerve.mesh"
 CHORDA_MESH_PATH = DATA_DIR / "5997_right_chorda.mesh"
 
+IMAGE_SIZES = {
+    "full": (1080,1920,3),
+    "quarter": (270,480,3),
+    "smallest": (135,240,3)
+}
+
 # OSSICLES_TRANSFORMATION_MATRIX = np.array([[  0.08788493,  -0.49934587,  -0.86193385,  -11.42548981],
 #                                             [  0.61244989,   0.70950026,  -0.34858929, -30.40459682],
 #                                             [  0.78560891,  -0.49725556,   0.3681787,    0.43013393],
@@ -174,17 +180,17 @@ def test_load_mesh(app):
     app.plot()
     
 @pytest.mark.parametrize(
-    "app",
-    [lazy_fixture("app_full"), lazy_fixture("app_quarter"), lazy_fixture("app_smallest")]
+    "app, name",
+    [
+        (lazy_fixture("app_full"), "full"),
+        (lazy_fixture("app_quarter"), "quarter"), 
+        (lazy_fixture("app_smallest"), "smallest")
+    ]
 )  
-def test_generate_image(app):
-    if app.window_size == (1920, 1080):
-        name = "full"
-    elif app.window_size == (480, 270):
-        name = "quarter"
-    elif app.window_size == (240, 135):
-        name = "smallest"
+def test_generate_image(app, name):
     image_np = app.render_scene(IMAGE_PATH, [0.01, 0.01, 1], True)
+    plt.imshow(image_np); plt.show()
+    assert image_np.shape == IMAGE_SIZES[name]
     vis.utils.save_image(image_np, DATA_DIR, f"image_{name}.png")
     print(image_np)
 
@@ -390,22 +396,20 @@ def test_pnp_with_masked_ossicles_surgical_microscope_smallest_size(app_smallest
     logger.debug(f"\ndifference from predicted pose and RT pose: {np.sum(np.abs(predicted_pose - RT))}")
             
     assert np.isclose(predicted_pose, RT, atol=20).all()
-     
+
+@pytest.fixture
+def gt_RT():
+    return np.array([[  0.08788493,  -0.49934587,  -0.86193385,  -11.42548981],
+                    [  0.61244989,   0.70950026,  -0.34858929, -30.40459682],
+                    [  0.78560891,  -0.49725556,   0.3681787,    500.43013393],
+                    [  0.,           0.,           0.,           1.        ]])
+
 @pytest.mark.parametrize(
-    "app, RT",
+    "app, name",
     [
-        (lazy_fixture("app_full"), np.array([[  0.08788493,  -0.49934587,  -0.86193385,  -11.42548981],
-                                            [  0.61244989,   0.70950026,  -0.34858929, -30.40459682],
-                                            [  0.78560891,  -0.49725556,   0.3681787,    0.43013393],
-                                            [  0.,           0.,           0.,           1.        ]])),
-        (lazy_fixture("app_quarter"), np.array([[  0.08788493,  -0.49934587,  -0.86193385,  -11.42548981],
-                                            [  0.61244989,   0.70950026,  -0.34858929, -30.40459682],
-                                            [  0.78560891,  -0.49725556,   0.3681787,    0.43013393],
-                                            [  0.,           0.,           0.,           1.        ]])),
-        (lazy_fixture("app_smallest"), np.array([[  0.08788493,  -0.49934587,  -0.86193385,  -11.42548981],
-                                            [  0.61244989,   0.70950026,  -0.34858929, -30.40459682],
-                                            [  0.78560891,  -0.49725556,   0.3681787,    0.43013393],
-                                            [  0.,           0.,           0.,           1.        ]])),
+        (lazy_fixture("app_full"), "full"),
+        (lazy_fixture("app_quarter"), "quarter"),
+        (lazy_fixture("app_smallest"), "smallest")
         # (lazy_fixture("app_full"), np.array([[  0.37177922,   0.8300953,   -0.41559835, -24.30279375],
         #             [  0.51533184,  -0.5569185,   -0.65136388,  -4.5669351],
         #             [ -0.7721485,    0.0279925,   -0.63482527,  -3.57181275],
@@ -424,24 +428,24 @@ def test_pnp_with_masked_ossicles_surgical_microscope_smallest_size(app_smallest
         #                         [  0.        ,   0.        ,   0.        ,   1.        ]]))
     ]
 )
-def test_pnp_with_masked_ossicles_surgical_microscope(app, RT):
+def test_pnp_with_masked_ossicles_surgical_microscope(app, gt_RT, name):
     
     mask_full = np.load(MASK_PATH_NUMPY_FULL)
     
     #  mask = np.load(MASK_PATH_NUMPY_FULL || MASK_PATH_NUMPY_QUARTER || MASK_PATH_NUMPY_SMALLEST) / 255
     
-    if app.window_size == (1920, 1080):
-        name = "full"
+    if name == "full":
         mask = mask_full / 255
         mask = np.where(mask != 0, 1, 0)
-    elif app.window_size == (480, 270):
-        name = "quarter"
+    elif name == "quarter":
         mask = skimage.transform.rescale(mask_full, 1/4)
-        mask = np.where(mask > 0.1, 1, 0)
-    elif app.window_size == (240, 135):
-        name = "smallest"
+    elif name == "smallest":
         mask = skimage.transform.rescale(mask_full, 1/8)
-        mask = np.where(mask > 0.1, 1, 0)
+    
+    mask = np.where(mask > 0.1, 1, 0)
+    # name = "test"
+    # mask = mask_full / 255
+    # mask = np.where(mask > 0.1, 1, 0)
         
     plt.subplot(211)
     plt.imshow(mask_full)
@@ -458,7 +462,7 @@ def test_pnp_with_masked_ossicles_surgical_microscope(app, RT):
     # Dilate mask
     # mask = cv2.dilate(mask, np.ones((5,5),np.uint8), iterations = 100)
         
-    app.set_transformation_matrix(RT)
+    app.set_transformation_matrix(gt_RT)
     app.load_meshes({'ossicles': OSSICLES_PATH_NO_COLOR})
     app.plot()
     
@@ -510,6 +514,6 @@ def test_pnp_with_masked_ossicles_surgical_microscope(app, RT):
             predicted_pose[:3, 3] = np.squeeze(translation_vector) + np.array(app.camera.position)
             logger.debug(len(inliers)) # 50703
             
-    logger.debug(f"\ndifference from predicted pose and RT pose: {np.sum(np.abs(predicted_pose - RT))}")
+    logger.debug(f"\ndifference from predicted pose and RT pose: {np.sum(np.abs(predicted_pose - gt_RT))}")
             
-    assert np.isclose(predicted_pose, RT, atol=4).all()
+    assert np.isclose(predicted_pose, gt_RT, atol=4).all()
