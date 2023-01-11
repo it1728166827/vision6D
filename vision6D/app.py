@@ -225,7 +225,8 @@ class App:
         print("hhh")
 
     def event_reset_camera(self, *args):
-        self.set_camera_intrinsics(self.original_camera_intrinsics)
+        self.camera_intrinsics = self.original_camera_intrinsics
+        self.set_camera_intrinsics(self.camera_intrinsics)
         self.pv_plotter.camera = self.camera.copy()
 
         logger.debug("reset_camera_event callback complete")
