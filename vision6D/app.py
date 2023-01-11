@@ -49,9 +49,16 @@ class App:
 
         # Set up the camera
         self.camera = pv.Camera()
-        self.cam_focal_length = cam_focal_length
+
+        # Set camera intrinsic attribute
+        self.camera_intrinsics = np.array([
+            [cam_focal_length, 0, width/2],
+            [0, cam_focal_length, height/2],
+            [0, 0, 1]
+        ])
+        self.original_camera_intrinsics = copy.deepcopy(self.camera_intrinsics)
         self.cam_viewup = cam_viewup
-        self.set_camera_intrinsics()
+        self.set_camera_intrinsics(self.camera_intrinsics)
         self.set_camera_extrinsics()
         
         # Set the attribute and its implications
@@ -78,27 +85,19 @@ class App:
         self.surface_opacity = surface_opacity
 
     def set_camera_extrinsics(self):
-        # self.camera.SetPosition((0,0,0))
-        # self.camera.SetFocalPoint((0,0,(self.cam_focal_length/100)/self.scale))
-        self.camera.SetPosition((0,0,-(self.cam_focal_length/100)/self.scale))
+        # self.camera.SetPosition((0,0,-(self.cam_focal_length/100)/self.scale))
+        self.camera.SetPosition((0,0,-(self.camera_intrinsics[0,0]/100)/self.scale))
         self.camera.SetFocalPoint((0,0,0))
         self.camera.SetViewUp(self.cam_viewup)
     
-    def set_camera_intrinsics(self):
+    def set_camera_intrinsics(self, camera_intrinsics):
 
         width = self.window_size[0]
         height = self.window_size[1]
         
-        # Set camera intrinsic attribute
-        self.camera_intrinsics = np.array([
-            [self.cam_focal_length, 0, width/2],
-            [0, self.cam_focal_length, height/2],
-            [0, 0, 1]
-        ])
-        
-        cx = self.camera_intrinsics[0,2]
-        cy = self.camera_intrinsics[1,2]
-        f = self.camera_intrinsics[0,0]
+        cx = camera_intrinsics[0,2]
+        cy = camera_intrinsics[1,2]
+        f = camera_intrinsics[0,0]
         
         # convert the principal point to window center (normalized coordinate system) and set it
         wcx = -2*(cx - float(width)/2) / width
@@ -203,15 +202,32 @@ class App:
             self.set_reference(reference_name)
             
     def event_zoom_out(self, *args):
-        self.pv_plotter.camera.zoom(0.5)
-        logger.debug("event_zoom_out callback complete")
+        logger.debug(f"before event_zoom_out callback, camera view angle: {self.pv_plotter.camera.view_angle}")
+
+        # self.pv_plotter.camera.zoom(0.5)
+
+        self.camera_intrinsics[0,0]/=2
+        self.set_camera_intrinsics(self.camera_intrinsics)
+        self.pv_plotter.camera = self.camera.copy()
+
+        logger.debug(f"after event_zoom_out callback complete, camera view angle: {self.pv_plotter.camera.view_angle}")
+        print("hhh")
 
     def event_zoom_in(self, *args):
-        self.pv_plotter.camera.zoom(2)
-        logger.debug("event_zoom_in callback complete")
+        logger.debug(f"before event_zoom_out callback, camera view angle: {self.pv_plotter.camera.view_angle}")
+
+        # self.pv_plotter.camera.zoom(2)
+
+        self.camera_intrinsics[0,0]*= 2
+        self.set_camera_intrinsics(self.camera_intrinsics)
+        self.pv_plotter.camera = self.camera.copy()
+        logger.debug(f"after event_zoom_in callback complete, camera view angle: {self.pv_plotter.camera.view_angle}")
+        print("hhh")
 
     def event_reset_camera(self, *args):
+        self.set_camera_intrinsics(self.original_camera_intrinsics)
         self.pv_plotter.camera = self.camera.copy()
+
         logger.debug("reset_camera_event callback complete")
 
     def event_reset_image(self, *args):
@@ -330,7 +346,8 @@ class App:
             # add the camera orientation to move the camera
             _ = self.pv_plotter.add_camera_orientation_widget()
             # Actual presenting
-            self.pv_plotter.show(title="vision6D") # cpos: [(0.0, 0.0, -500.0), (0.0, 0.0, 0.0), (0.0, -1.0, 0.0)]
+            cpos = self.pv_plotter.show(title="vision6D", return_cpos=True) # cpos: [(0.0, 0.0, -500.0), (0.0, 0.0, 0.0), (0.0, -1.0, 0.0)]
+            print("hhhh")
         else:
             self.pv_plotter.disable()
             self.pv_plotter.show(title="vision6D")
