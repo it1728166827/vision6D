@@ -16,18 +16,25 @@ class App:
     def __init__(
             self, 
             register,
+            colors: np.ndarray=None,
             width: int=1920,
             height: int=1080,
             scale: float=1,
             # use surgical microscope for medical device with view angle 1 degree
             cam_focal_length:int=5e+4,
-            cam_viewup: Tuple=(0,-1,0),
+            cam_viewup: Tuple=(0,-1,0)
         ):
         
         self.window_size = (int(width*scale), int(height*scale))
         self.scale = scale
+
+        self.colors = colors
+        assert self.colors is not None, "color need to be set first!"
+
         self.reference = None
         self.transformation_matrix = None
+
+        self.ossicles_colors = {}
         
         self.image_actors = {}
         self.mesh_actors = {}
@@ -172,12 +179,20 @@ class App:
             self.mesh_polydata[mesh_name] = mesh_data
             
             self.set_vertices(mesh_name, mesh_data.points)
-            
+
             # set the color to be the meshes' initial location, and never change the color
             colors = vis.utils.color_mesh(mesh_data.points.T)
             
-            # Color the vertex
-            mesh_data.point_data.set_scalars(colors)
+            # color the vetex
+            if mesh_name == "ossicles":
+                mesh_data.point_data.set_scalars(self.colors)
+                assert self.colors.shape == colors.shape, "the shape of self.colors should be equal to colors!"
+                
+                for i in range(len(colors)):
+                    self.ossicles_colors[str(self.colors[i])] = colors[i]
+                
+            else:
+                mesh_data.point_data.set_scalars(colors)
 
             mesh = self.pv_plotter.add_mesh(mesh_data, rgb=True, opacity = self.surface_opacity, name=mesh_name)
             

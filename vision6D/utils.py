@@ -152,12 +152,21 @@ def create_2d_3d_pairs(color_mask:np.ndarray, obj:Type, object_name:str, npts:in
     # rand_pts = np.vstack((rand_pts, [0, 0]))
     
     # Obtain the 3D verticies (normaize rgb values)
-    rgb = color_mask[rand_pts[:,1], rand_pts[:,0]]
-
-    if np.max(rgb) > 1:
-        rgb = rgb / 255
+    temp = color_mask[rand_pts[:,1], rand_pts[:,0]]
+    true_rgb = getattr(obj, 'ossicles_colors')
+    
+    if np.max(temp) > 1:
+        temp = temp / 255
+    
+    rgb = []
+    for i in range(len(temp)):
+        try:
+            rgb.append(true_rgb[str(temp[i])])
+        except KeyError:
+            pass
 
     vertices = getattr(obj, f'{object_name}_vertices')
+
     r = rgb[:, 0] * (np.max(vertices[0]) - np.min(vertices[0])) + np.min(vertices[0])
     g = rgb[:, 1] * (np.max(vertices[1]) - np.min(vertices[1])) + np.min(vertices[1])
     b = rgb[:, 2] * (np.max(vertices[2]) - np.min(vertices[2])) + np.min(vertices[2])

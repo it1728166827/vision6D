@@ -1090,3 +1090,21 @@ def color2binary_mask(color_mask):
     binary_mask[non_black_pixels_mask] = [1]
     
     return binary_mask
+
+# 1/2 size of the (1920, 1080) -> (960, 540)
+@pytest.fixture
+def app_half():
+    colors = np.load(DATA_DIR / "colors_5997.npy")
+    return vis.App(register=True, colors=colors, scale=1/2)
+    
+# 1/4 size of the (1920, 1080) -> (480, 270)
+@pytest.fixture
+def app_quarter():
+    colors = np.load(DATA_DIR / "colors_5997.npy")
+    return vis.App(register=True, colors=colors, scale=1/4)
+    
+# 1/8 size of the (1920, 1080) -> (240, 135)
+@pytest.fixture
+def app_smallest():
+    colors = np.load(DATA_DIR / "colors_5997.npy")
+    return vis.App(register=True, colors=colors, scale=1/8)
