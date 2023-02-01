@@ -16,7 +16,6 @@ class App:
     def __init__(
             self, 
             register,
-            colors: np.ndarray=None,
             width: int=1920,
             height: int=1080,
             scale: float=1,
@@ -28,13 +27,8 @@ class App:
         self.window_size = (int(width*scale), int(height*scale))
         self.scale = scale
 
-        self.colors = colors
-        assert self.colors is not None, "color need to be set first!"
-
         self.reference = None
         self.transformation_matrix = None
-
-        self.ossicles_colors = {}
         
         self.image_actors = {}
         self.mesh_actors = {}
@@ -184,15 +178,7 @@ class App:
             colors = vis.utils.color_mesh(mesh_data.points.T)
             
             # color the vetex
-            if mesh_name == "ossicles":
-                mesh_data.point_data.set_scalars(self.colors)
-                assert self.colors.shape == colors.shape, "the shape of self.colors should be equal to colors!"
-                
-                for i in range(len(colors)):
-                    self.ossicles_colors[str(self.colors[i])] = colors[i]
-                
-            else:
-                mesh_data.point_data.set_scalars(colors)
+            mesh_data.point_data.set_scalars(colors)
 
             mesh = self.pv_plotter.add_mesh(mesh_data, rgb=True, opacity = self.surface_opacity, name=mesh_name)
             

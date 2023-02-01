@@ -89,8 +89,7 @@ gt_pose_6742 = np.array([[ -0.00205008,  -0.27174699,   0.96236655,  16.14180134
 # full size of the (1920, 1080)
 @pytest.fixture
 def app():
-    colors = np.load(DATA_DIR / "colors_5997.npy")
-    return vis.App(register=True, colors=colors, scale=1)
+    return vis.App(register=True, scale=1)
     
 def test_load_image(app):
     image_source = np.array(Image.open(IMAGE_NUMPY_PATH))
@@ -109,8 +108,6 @@ def test_load_image(app):
     ]
 )  
 def test_load_mesh_from_dataset(app, image_path, ossicles_path, facial_nerve_path, chorda_path, RT):
-    colors = np.load(DATA_DIR / "colors_5997.npy")
-    app = vis.App(register=True, colors=colors, scale=1)
     image_numpy = np.array(Image.open(image_path)) # (H, W, 3)
     app.load_image(image_numpy)
     app.set_transformation_matrix(RT)
@@ -174,7 +171,7 @@ def test_generate_image(app):
     ("6742", mask_6742_hand_draw_numpy, OSSICLES_MESH_PATH_6742, gt_pose_6742, 1/5), # error: 2.415673998426594 # if resize cv2: 148.14798220849184 # if resize torch: 212.11247242207978
     ]
 )
-def test_pnp_from_dataset(name, hand_draw_mask, ossicles_path, RT, resize):
+def test_pnp_from_dataset(app, name, hand_draw_mask, ossicles_path, RT, resize):
 
     # save the GT pose to .npy file
     # np.save(DATA_DIR / f"{name}_gt_pose.npy", RT)
@@ -187,8 +184,6 @@ def test_pnp_from_dataset(name, hand_draw_mask, ossicles_path, RT, resize):
     # expand the dimension
     seg_mask = np.expand_dims(mask, axis=-1)
 
-    colors = np.load(DATA_DIR / "colors_5997.npy")
-    app = vis.App(register=True, colors=colors, scale=1)
     app.set_transformation_matrix(RT)
     app.load_meshes({'ossicles': ossicles_path})
     app.plot()
