@@ -14,6 +14,7 @@ from pytest_lazyfixture  import lazy_fixture
 import skimage.transform
 import torch
 import torchvision
+import trimesh
 
 import vision6D as vis
 
@@ -70,10 +71,26 @@ gt_pose_6088 = np.array([[  0.36049218,  -0.12347807,  -0.93605796, -24.3777202 
                         [  0.,           0.,           0.,           1.        ]])
 
 
+# transform_6088 = np.array([[ 0.98253186,  0.17303796, -0.06847637, -7.15647844],
+#                         [-0.17832477,  0.98066762, -0.08056859,  0.55329997],
+#                         [ 0.05321113,  0.09137224,  0.99439413, -2.44892642],
+#                         [ 0.        ,  0.        ,  0.        ,  1.        ]])
+
+# gt_pose_6088 = gt_pose_6088 @ transform_6088
+
+
 gt_pose_6108 = np.array([[  0.18750646,   0.35092506,  -0.91743823, -29.81739935],
                         [  0.55230585,   0.73470634,   0.39390969, -19.10118172],
                         [  0.81228048,  -0.58056712,  -0.0560558,  227.40282413],
                         [  0.,           0.,           0.,           1.        ]]) #  GT pose
+
+
+# transform_6108 = np.array([[ 0.95373707, -0.21542122,  0.20971242,  5.62203364],
+#                         [ 0.03701463,  0.77637954,  0.62917782, 18.76486484],
+#                         [-0.29835469, -0.59230778,  0.74843568, 12.86258969],
+#                         [ 0.        ,  0.        ,  0.        ,  1.        ]])
+
+# gt_pose_6108 = transform_6108 @ gt_pose_6108
 
 gt_pose_6742 = np.array([[ -0.00205008,  -0.27174699,   0.96236655,  16.14180134],
                         [ -0.4431008,    0.86298269,   0.24273971,  -4.42885807],
@@ -162,6 +179,26 @@ def test_generate_image(app):
     image_np = app.render_scene(render_image=True, image_source=image_numpy)
     plt.imshow(image_np); plt.show()
     vis.utils.save_image(image_np, TEST_DATA_DIR, f"image.png")
+
+def test_preregister_meshes():
+    mesh_5997 = vis.utils.load_trimesh(OSSICLES_MESH_PATH_5997)
+    mesh_6088 = vis.utils.load_trimesh(OSSICLES_MESH_PATH_6088)
+    mesh_6108 = vis.utils.load_trimesh(OSSICLES_MESH_PATH_6108)
+    # mesh_6742 = vis.utils.load_trimesh(OSSICLES_MESH_PATH_6742)
+    
+    transform_6088, _ = trimesh.registration.mesh_other(mesh_6088, mesh_5997)
+    transform_6108, _ = trimesh.registration.mesh_other(mesh_6108, mesh_5997)
+    # transform_6742, _ = trimesh.registration.mesh_other(mesh_6742, mesh_5997)
+
+    mesh_6088 = mesh_6088.apply_transform(transform_6088)
+    mesh_6108 = mesh_6108.apply_transform(transform_6108)
+    # mesh_6742.apply_transform(transform_6742)
+
+    vis.utils.trimesh2meshobj(OSSICLES_MESH_PATH_6088, mesh_6088)
+    vis.utils.trimesh2meshobj(OSSICLES_MESH_PATH_6108, mesh_6108)
+    # vis.utils.trimesh2meshobj(OSSICLES_MESH_PATH_6742, mesh_6742)
+
+    print("jjjj")
 
 @pytest.mark.parametrize(
     "name, hand_draw_mask, ossicles_path, RT, resize",
